@@ -45,7 +45,7 @@ public class TFLiteObjectDetectionAPIModel implements Classifier {
   private static final Logger LOGGER = new Logger();
 
   // Only return this many results.
-  private static final int NUM_DETECTIONS = 10;
+  private static final int NUM_DETECTIONS = 60;
   // Float model
   private static final float IMAGE_MEAN = 128.0f;
   private static final float IMAGE_STD = 128.0f;
@@ -59,7 +59,7 @@ public class TFLiteObjectDetectionAPIModel implements Classifier {
   private int[] intValues;
   // outputLocations: array of shape [Batchsize, NUM_DETECTIONS,4]
   // contains the location of detected boxes
-  private float[][][] outputLocations;
+  private float[][][][] outputLocations;
   // outputClasses: array of shape [Batchsize, NUM_DETECTIONS]
   // contains the classes of detected boxes
   private float[][] outputClasses;
@@ -138,7 +138,7 @@ public class TFLiteObjectDetectionAPIModel implements Classifier {
     d.intValues = new int[d.inputSize * d.inputSize];
 
     d.tfLite.setNumThreads(NUM_THREADS);
-    d.outputLocations = new float[1][NUM_DETECTIONS][4];
+    d.outputLocations = new float[1][13][13][60];
     d.outputClasses = new float[1][NUM_DETECTIONS];
     d.outputScores = new float[1][NUM_DETECTIONS];
     d.numDetections = new float[1];
@@ -175,7 +175,7 @@ public class TFLiteObjectDetectionAPIModel implements Classifier {
 
     // Copy the input data into TensorFlow.
     Trace.beginSection("feed");
-    outputLocations = new float[1][NUM_DETECTIONS][4];
+    outputLocations = new float[1][13][13][60];
     outputClasses = new float[1][NUM_DETECTIONS];
     outputScores = new float[1][NUM_DETECTIONS];
     numDetections = new float[1];
@@ -183,9 +183,9 @@ public class TFLiteObjectDetectionAPIModel implements Classifier {
     Object[] inputArray = {imgData};
     Map<Integer, Object> outputMap = new HashMap<>();
     outputMap.put(0, outputLocations);
-    outputMap.put(1, outputClasses);
-    outputMap.put(2, outputScores);
-    outputMap.put(3, numDetections);
+    //outputMap.put(1, outputClasses);
+    //outputMap.put(2, outputScores);
+    //outputMap.put(3, numDetections);
     Trace.endSection();
 
     // Run the inference call.
@@ -199,10 +199,10 @@ public class TFLiteObjectDetectionAPIModel implements Classifier {
     for (int i = 0; i < NUM_DETECTIONS; ++i) {
       final RectF detection =
           new RectF(
-              outputLocations[0][i][1] * inputSize,
-              outputLocations[0][i][0] * inputSize,
-              outputLocations[0][i][3] * inputSize,
-              outputLocations[0][i][2] * inputSize);
+              outputLocations[0][1][1][i] * inputSize,
+              outputLocations[0][0][0][i] * inputSize,
+              outputLocations[0][2][3][i] * inputSize,
+              outputLocations[0][1][2][i] * inputSize);
       // SSD Mobilenet V1 Model assumes class 0 is background class
       // in label file and class labels start from 1 to number_of_classes+1,
       // while outputClasses correspond to class index from 0 to number_of_classes

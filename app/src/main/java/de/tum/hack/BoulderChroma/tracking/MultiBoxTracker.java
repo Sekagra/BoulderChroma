@@ -145,7 +145,8 @@ public class MultiBoxTracker {
 
       final String labelString =
           !TextUtils.isEmpty(recognition.title)
-              ? String.format("%.2f #%06X", (100 * recognition.detectionConfidence), recognition.color)
+              //? String.format("%.2f #%06X", (100 * recognition.detectionConfidence), recognition.color)
+              ? String.format("%s %.2f", recognition.title, (100 * recognition.detectionConfidence))
               : String.format("%.2f", (100 * recognition.detectionConfidence));
       //            borderedText.drawText(canvas, trackedPos.left + cornerSize, trackedPos.top,
       // labelString);
@@ -193,7 +194,8 @@ public class MultiBoxTracker {
       trackedRecognition.detectionConfidence = potential.first;
       trackedRecognition.location = new RectF(potential.second.getLocation());
       trackedRecognition.title = potential.second.getTitle();
-      trackedRecognition.color = potential.second.getColor();
+      //trackedRecognition.color = potential.second.getColor();
+      trackedRecognition.color = COLORS[trackedObjects.size()];
       trackedObjects.add(trackedRecognition);
 
       if (trackedObjects.size() >= COLORS.length) {
