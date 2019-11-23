@@ -44,6 +44,8 @@ public interface Classifier {
     /** Display name for the recognition. */
     private final String title;
 
+    private int color;
+
     /**
      * A sortable score for how good the recognition is relative to others. Higher should be better.
      */
@@ -76,6 +78,10 @@ public interface Classifier {
       return new RectF(location);
     }
 
+    public int getColor() {
+      return this.color;
+    }
+
     public void setLocation(RectF location) {
       this.location = location;
     }
@@ -99,7 +105,15 @@ public interface Classifier {
         resultString += location + " ";
       }
 
+      if (color > 0) {
+        resultString += String.format("Color: %x", this.color);
+      }
+
       return resultString.trim();
+    }
+
+    public void setColor(int color) {
+      this.color = color;
     }
   }
 }

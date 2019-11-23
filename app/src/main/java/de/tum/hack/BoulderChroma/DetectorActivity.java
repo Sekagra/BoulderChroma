@@ -26,13 +26,19 @@ import android.graphics.Paint.Style;
 import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.media.ImageReader.OnImageAvailableListener;
+import android.os.Environment;
 import android.os.SystemClock;
+import android.util.Log;
 import android.util.Size;
 import android.util.TypedValue;
 import android.widget.Toast;
+
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Random;
 
 import de.tum.hack.BoulderChroma.R;
 
@@ -204,10 +210,20 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
             for (final Classifier.Recognition result : results) {
               final RectF location = result.getLocation();
               if (location != null && result.getConfidence() >= minimumConfidence) {
+
+                // find color of the location
+                if (location.centerX() < cropCopyBitmap.getWidth() && location.centerY() < cropCopyBitmap.getHeight()) {
+                  int pixel = cropCopyBitmap.getPixel((int)location.centerX(), (int)location.centerY());
+                  int redValue = Color.red(pixel);
+                  int blueValue = Color.blue(pixel);
+                  int greenValue = Color.green(pixel);
+                  result.setColor(Color.rgb(redValue, greenValue, blueValue));
+                  LOGGER.i(String.format("Found pixel with color #%06X", (0xFFFFFF & result.getColor())));
+                }
+
                 canvas.drawRect(location, paint);
 
                 cropToFrameTransform.mapRect(location);
-
                 result.setLocation(location);
                 mappedRecognitions.add(result);
               }
