@@ -34,7 +34,7 @@ import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.tensorflow.lite.examples.BoulderChroma.R;
+import de.tum.hack.BoulderChroma.R;
 
 import de.tum.hack.BoulderChroma.customview.OverlayView;
 import de.tum.hack.BoulderChroma.customview.OverlayView.DrawCallback;

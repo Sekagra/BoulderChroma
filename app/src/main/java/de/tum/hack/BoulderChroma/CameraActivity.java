@@ -51,7 +51,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 import java.nio.ByteBuffer;
 
-import org.tensorflow.lite.examples.BoulderChroma.R;
+import de.tum.hack.BoulderChroma.R;
 
 import de.tum.hack.BoulderChroma.env.ImageUtils;
 import de.tum.hack.BoulderChroma.env.Logger;

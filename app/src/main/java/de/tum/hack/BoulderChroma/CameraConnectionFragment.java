@@ -60,7 +60,7 @@ import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
-import org.tensorflow.lite.examples.BoulderChroma.R;
+import de.tum.hack.BoulderChroma.R;
 
 import de.tum.hack.BoulderChroma.customview.AutoFitTextureView;
 import de.tum.hack.BoulderChroma.env.Logger;
