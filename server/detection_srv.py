@@ -54,6 +54,35 @@ def closest_colour(requested_colour):
     print(min_colours)
     return min_colours[min(min_colours.keys())]
 
+def delete_subboxes(predictions):
+    sort_predictions = sorted(predictions, key = lambda p: p["boundingBox"]["width"] * p["boundingBox"]["height"])
+
+    delete_items = []
+    for i, p in enumerate(sort_predictions):
+        p_left =  p["boundingBox"]["left"]
+        p_top =  p["boundingBox"]["top"]
+        p_right =  p["boundingBox"]["width"] + p_left
+        p_bottom =  p["boundingBox"]["height"] + p_top
+
+        for p2 in sort_predictions[(i + 1):]:
+            p2_left =  p2["boundingBox"]["left"]
+            p2_top =  p2["boundingBox"]["top"]
+            p2_right =  p2["boundingBox"]["width"] + p2_left
+            p2_bottom =  p2["boundingBox"]["height"] + p2_top
+
+            if p2_left <= p_left and p2_right >= p_right and p2_top <= p_top and p2_bottom >= p_bottom:
+                delete_items.append(p)
+                
+                if p2["probability"] < p["probability"]:
+                    p2["tagId"] = p["tagId"]
+                    p2["tagName"] = p["tagName"]
+
+    return [p for p in sort_predictions if p not in delete_items]
+
+
+    
+
+
 @app.route("/", methods=["post"])
 def get_prediction():
     req_file = request.files['file']
@@ -63,7 +92,7 @@ def get_prediction():
 
     img = Image.open(req_file)
     predictions = od_model.predict_image(img)
-    return jsonify(predictions), 200
+    return jsonify(delete_subboxes(predictions)), 200
     
     
 if __name__ == "__main__":
