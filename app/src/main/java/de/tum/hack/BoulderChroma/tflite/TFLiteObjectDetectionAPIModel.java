@@ -39,6 +39,7 @@ import java.util.Vector;
 
 import org.tensorflow.lite.Interpreter;
 
+import de.tum.hack.BoulderChroma.env.ImageUtils;
 import de.tum.hack.BoulderChroma.env.Logger;
 
 /**
@@ -160,6 +161,8 @@ public class TFLiteObjectDetectionAPIModel implements Classifier {
         Trace.beginSection("preprocessBitmap");
         // Preprocess the image data from 0-255 int to normalized float based
         // on the provided parameters.
+
+
         bitmap.getPixels(intValues, 0, bitmap.getWidth(), 0, 0, bitmap.getWidth(), bitmap.getHeight());
 
         imgData.rewind();
@@ -172,9 +175,9 @@ public class TFLiteObjectDetectionAPIModel implements Classifier {
                     imgData.put((byte) ((pixelValue >> 8) & 0xFF));
                     imgData.put((byte) (pixelValue & 0xFF));
                 } else { // Float model
-                    imgData.putFloat((((pixelValue >> 16) & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
-                    imgData.putFloat((((pixelValue >> 8) & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
-                    imgData.putFloat(((pixelValue & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
+                    imgData.putFloat((((pixelValue >> 16) & 0xFF)));// - IMAGE_MEAN) / IMAGE_STD);
+                    imgData.putFloat((((pixelValue >> 8) & 0xFF)));// - IMAGE_MEAN) / IMAGE_STD);
+                    imgData.putFloat(((pixelValue & 0xFF)));// - IMAGE_MEAN) / IMAGE_STD);
                 }
             }
         }
@@ -194,6 +197,9 @@ public class TFLiteObjectDetectionAPIModel implements Classifier {
         //outputMap.put(2, outputScores);
         //outputMap.put(3, numDetections);
         Trace.endSection();
+
+
+        ImageUtils.saveBitmap(bitmap);
 
         // Run the inference call.
         Trace.beginSection("run");
@@ -245,7 +251,7 @@ public class TFLiteObjectDetectionAPIModel implements Classifier {
 
         int detectionCount = 0;
 
-        double thresh = 0.0018;
+        double thresh = 0.05;
 
         double maxMaxProb = 0.0;
 
@@ -301,7 +307,7 @@ public class TFLiteObjectDetectionAPIModel implements Classifier {
                             new Recognition(
                                     "" + detectionCount,
                                     labels.get(maxClass),
-                                    1.0f, // (float) objectness,
+                                    (float) objectness,
                                     detection));
                     detectionCount++;
                 }

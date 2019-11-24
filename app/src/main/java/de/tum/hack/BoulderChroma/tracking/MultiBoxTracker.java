@@ -40,21 +40,13 @@ public class MultiBoxTracker {
   private static final float TEXT_SIZE_DIP = 18;
   private static final float MIN_SIZE = 16.0f;
   private static final int[] COLORS = {
+    Color.BLACK,
     Color.BLUE,
-    Color.RED,
     Color.GREEN,
-    Color.YELLOW,
-    Color.CYAN,
-    Color.MAGENTA,
+    Color.rgb(255,165,0),
+    Color.RED,
     Color.WHITE,
-    Color.parseColor("#55FF55"),
-    Color.parseColor("#FFA500"),
-    Color.parseColor("#FF8888"),
-    Color.parseColor("#AAAAFF"),
-    Color.parseColor("#FFFFAA"),
-    Color.parseColor("#55AAAA"),
-    Color.parseColor("#AA33AA"),
-    Color.parseColor("#0D0068")
+    Color.YELLOW
   };
   final List<Pair<Float, RectF>> screenRects = new LinkedList<Pair<Float, RectF>>();
   private final Logger logger = new Logger();
@@ -137,7 +129,14 @@ public class MultiBoxTracker {
     for (final TrackedRecognition recognition : trackedObjects) {
       final RectF trackedPos = new RectF(recognition.location);
 
-      getFrameToCanvasMatrix().mapRect(trackedPos);
+      float DAVID_COPPERFIELD = 0.8f;
+      trackedPos.top *= canvas.getHeight() * DAVID_COPPERFIELD;
+      trackedPos.bottom *= canvas.getHeight() * DAVID_COPPERFIELD;
+      trackedPos.left *= canvas.getWidth();
+      trackedPos.right *= canvas.getWidth();
+
+      //getFrameToCanvasMatrix().mapRect(trackedPos);
+
       boxPaint.setColor(recognition.color);
 
       float cornerSize = Math.min(trackedPos.width(), trackedPos.height()) / 8.0f;
@@ -146,12 +145,13 @@ public class MultiBoxTracker {
       final String labelString =
           !TextUtils.isEmpty(recognition.title)
               //? String.format("%.2f #%06X", (100 * recognition.detectionConfidence), recognition.color)
-              ? String.format("%s %.2f", recognition.title, (100 * recognition.detectionConfidence))
+              //? String.format("%s %.2f", recognition.title, (100 * recognition.detectionConfidence))
+              ? String.format("%s", recognition.title)
               : String.format("%.2f", (100 * recognition.detectionConfidence));
       //            borderedText.drawText(canvas, trackedPos.left + cornerSize, trackedPos.top,
       // labelString);
       borderedText.drawText(
-          canvas, trackedPos.left + cornerSize, trackedPos.top, labelString + "%", boxPaint);
+          canvas, trackedPos.left + cornerSize, trackedPos.top, labelString, boxPaint);
     }
   }
 
@@ -170,15 +170,9 @@ public class MultiBoxTracker {
       final RectF detectionScreenRect = new RectF();
       rgbFrameToScreen.mapRect(detectionScreenRect, detectionFrameRect);
 
-      logger.v(
-          "Result! Frame: " + result.getLocation() + " mapped to screen:" + detectionScreenRect);
+      logger.v("Result! Frame: " + result.getLocation() + " mapped to screen:" + detectionScreenRect);
 
       screenRects.add(new Pair<Float, RectF>(result.getConfidence(), detectionScreenRect));
-
-      if (detectionFrameRect.width() < MIN_SIZE || detectionFrameRect.height() < MIN_SIZE) {
-        logger.w("Degenerate rectangle! " + detectionFrameRect);
-        continue;
-      }
 
       rectsToTrack.add(new Pair<Float, Classifier.Recognition>(result.getConfidence(), result));
     }
@@ -195,12 +189,8 @@ public class MultiBoxTracker {
       trackedRecognition.location = new RectF(potential.second.getLocation());
       trackedRecognition.title = potential.second.getTitle();
       //trackedRecognition.color = potential.second.getColor();
-      trackedRecognition.color = COLORS[trackedObjects.size()];
+      trackedRecognition.color = COLORS[Integer.parseInt(potential.second.getId())];
       trackedObjects.add(trackedRecognition);
-
-      if (trackedObjects.size() >= COLORS.length) {
-        break;
-      }
     }
   }
 

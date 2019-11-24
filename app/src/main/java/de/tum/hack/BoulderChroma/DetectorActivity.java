@@ -26,21 +26,25 @@ import android.graphics.Paint.Style;
 import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.media.ImageReader.OnImageAvailableListener;
-import android.os.Environment;
 import android.os.SystemClock;
+import android.util.JsonReader;
+import android.util.JsonToken;
 import android.util.Log;
 import android.util.Size;
 import android.util.TypedValue;
 import android.widget.Toast;
 
-import java.io.File;
-import java.io.FileOutputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLConnection;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Random;
-
-import de.tum.hack.BoulderChroma.R;
 
 import de.tum.hack.BoulderChroma.customview.OverlayView;
 import de.tum.hack.BoulderChroma.customview.OverlayView.DrawCallback;
@@ -65,10 +69,10 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
   private static final String TF_OD_API_LABELS_FILE = "file:///android_asset/labels.txt";
   private static final DetectorMode MODE = DetectorMode.TF_OD_API;
   // Minimum detection confidence to track a detection.
-  private static final float MINIMUM_CONFIDENCE_TF_OD_API = 0.6f;
+  private static final float MINIMUM_CONFIDENCE_TF_OD_API = 0.2f;
   private static final boolean MAINTAIN_ASPECT = false;
   private static final Size DESIRED_PREVIEW_SIZE = new Size(640, 480);
-  private static final boolean SAVE_PREVIEW_BITMAP = true;
+  private static final boolean SAVE_PREVIEW_BITMAP = false;
   private static final float TEXT_SIZE_DIP = 10;
   OverlayView trackingOverlay;
   private Integer sensorOrientation;
@@ -187,7 +191,89 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
           public void run() {
             LOGGER.i("Running detection on image " + currTimestamp);
             final long startTime = SystemClock.uptimeMillis();
-            final List<Classifier.Recognition> results = detector.recognizeImage(croppedBitmap);
+
+
+            // Send web request to our """backend""" an get info about where to draw the boxes
+            ByteArrayOutputStream bao = new ByteArrayOutputStream();
+            croppedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, bao);
+
+            byte[] data = bao.toByteArray();
+
+            List<Classifier.Recognition> rects = new ArrayList<>();
+            try {
+              LOGGER.i("Attempting to send an image.");
+              URL url = new URL("http://131.159.226.43:5000/");
+              // multipart file
+              HttpURLConnection con = (HttpURLConnection) url.openConnection();
+              con.setRequestMethod("POST");
+              con.setUseCaches(false);
+              con.setDoOutput(true);
+              con.setRequestProperty("Content-Size", "" + data.length);
+              String boundary = "===" + System.currentTimeMillis() + "===";
+              con.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
+
+              OutputStream out = con.getOutputStream();
+
+              OutputStreamWriter writer = new OutputStreamWriter(out);
+              writer.append("--" + boundary + "\r\n");
+              writer.append(
+                      "Content-Disposition: form-data; name=\"file\"; filename=\"image.jpg\"\r\n");
+              writer.append(
+                      "Content-Type: " + URLConnection.guessContentTypeFromName("image.jpg") + "\r\n");
+              writer.append("Content-Transfer-Encoding: binary\r\n\r\n");
+              writer.flush();
+
+              out.write(data);
+              out.flush();
+
+              writer.append("\r\n");
+              writer.flush();
+
+              writer.append("\r\n").flush();
+              writer.append("--" + boundary + "--\r\n");
+              writer.close();
+
+
+              int code = con.getResponseCode();
+              if (code < 200 || code >= 300) {
+                throw new Exception("Image upload failed with return code " + code);
+              }
+
+              JsonReader reader = new JsonReader(new InputStreamReader(con.getInputStream(), "UTF-8"));
+
+              // Parse JSON response
+              reader.beginArray();
+              while (reader.hasNext()) {
+                rects.add(readRecognition(reader));
+              }
+              reader.endArray();
+
+              reader.close();
+              con.disconnect();
+            } catch (Exception e) {
+              e.printStackTrace();
+              computingDetection = false;
+              return;
+            }
+
+            // TODO return
+            LOGGER.i(String.format("Received %d rects.", rects.size()));
+
+            // DRIVE BY
+            /*AssetManager assetManager = DetectorActivity.this.getAssets();
+
+            InputStream istr;
+            Bitmap testBitmap = null;
+            try {
+              istr = assetManager.open("0026.png");
+              testBitmap = BitmapFactory.decodeStream(istr);
+            } catch (IOException e) {
+              // handle exception
+            }*/
+
+
+
+            /*final List<Classifier.Recognition> results = detector.recognizeImage(croppedBitmap);
             lastProcessingTimeMs = SystemClock.uptimeMillis() - startTime;
 
             cropCopyBitmap = Bitmap.createBitmap(croppedBitmap);
@@ -209,7 +295,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 
             for (final Classifier.Recognition result : results) {
               final RectF location = result.getLocation();
-              if (location != null && result.getConfidence() >= minimumConfidence) {
+              if (location != null && result.getConfidence() >= minimumConfidence) {*/
 
                 // find color of the location
                 /*if (location.centerX() < cropCopyBitmap.getWidth() && location.centerY() < cropCopyBitmap.getHeight()) {
@@ -221,15 +307,18 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
                   LOGGER.i(String.format("Found pixel with color #%06X", (0xFFFFFF & result.getColor())));
                 }*/
 
-                canvas.drawRect(location, paint);
+                /*canvas.drawRect(location, paint);
 
                 cropToFrameTransform.mapRect(location);
                 result.setLocation(location);
                 mappedRecognitions.add(result);
               }
-            }
+            }*/
 
-            tracker.trackResults(mappedRecognitions, currTimestamp);
+            cropCopyBitmap = Bitmap.createBitmap(croppedBitmap);
+            final Canvas canvas = new Canvas(cropCopyBitmap);
+
+            tracker.trackResults(rects, currTimestamp);
             trackingOverlay.postInvalidate();
 
             computingDetection = false;
@@ -243,8 +332,58 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
                     showInference(lastProcessingTimeMs + "ms");
                   }
                 });
-          }
+            }
         });
+  }
+
+  private Classifier.Recognition readRecognition(JsonReader reader) throws IOException {
+    String id = null;
+    String title = null;
+    float confidence = 0.0f;
+    RectF boundingBox = null;
+
+    reader.beginObject();
+    while (reader.hasNext()) {
+      String name = reader.nextName();
+      if (name.equals("probability")) {
+        confidence = (float) reader.nextDouble();
+      } else if (name.equals("tagId")) {
+        id = reader.nextString();
+      } else if (name.equals("tagName")) {
+        title = reader.nextString();
+      } else if (name.equals("boundingBox")) {
+        boundingBox = readRect(reader);
+      } else {
+        reader.skipValue();
+      }
+    }
+    reader.endObject();
+    return new Classifier.Recognition(id, title, confidence, boundingBox);
+  }
+
+  private RectF readRect(JsonReader reader) throws IOException {
+    float left = 0.0f;
+    float top = 0.0f;
+    float width = 0.0f;
+    float height = 0.0f;
+
+    reader.beginObject();
+    while (reader.hasNext()) {
+      String name = reader.nextName();
+      if (name.equals("left")) {
+        left = (float) reader.nextDouble();// * croppedBitmap.getWidth();
+      } else if (name.equals("top")) {
+        top = (float) reader.nextDouble();// * croppedBitmap.getHeight();
+      } else if (name.equals("width")) {
+        width = (float) reader.nextDouble();// * croppedBitmap.getWidth();
+      } else if (name.equals("height")) {
+        height = (float) reader.nextDouble();// * croppedBitmap.getHeight();
+      } else {
+        reader.skipValue();
+      }
+    }
+    reader.endObject();
+    return new RectF(left, top, left + width, top + height);
   }
 
   @Override
