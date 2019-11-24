@@ -64,18 +64,43 @@ def delete_subboxes(predictions):
         p_right =  p["boundingBox"]["width"] + p_left
         p_bottom =  p["boundingBox"]["height"] + p_top
 
+        p_area = (
+                max(0, p_right - p_left) *
+                max(0, p_bottom - p_top)
+            )
+
         for p2 in sort_predictions[(i + 1):]:
             p2_left =  p2["boundingBox"]["left"]
             p2_top =  p2["boundingBox"]["top"]
             p2_right =  p2["boundingBox"]["width"] + p2_left
             p2_bottom =  p2["boundingBox"]["height"] + p2_top
 
-            if p2_left <= p_left and p2_right >= p_right and p2_top <= p_top and p2_bottom >= p_bottom:
-                delete_items.append(p)
+            inters_box_left = max(p_left, p2_left)
+            inters_box_top = max(p_top, p2_top)
+            inters_box_right = min(p_right, p2_right)
+            inters_box_bottom = min(p_bottom, p2_bottom)
+
+            inters_box_area = (
+                max(0, inters_box_right - inters_box_left) *
+                max(0, inters_box_bottom - inters_box_top)
+            )
+
+            if inters_box_area <= 0:
+                continue
+
+            if inters_box_area < .1 * p_area:
+                continue
+
+            delete_items.append(p)
+
+            p2["boundingBox"]["left"] = min(p_left, p2_left)
+            p2["boundingBox"]["top"] = min(p_top, p2_top)
+            p2["boundingBox"]["width"] = max(p_right, p2_right) - p2["boundingBox"]["left"]
+            p2["boundingBox"]["height"] = max(p_bottom, p2_bottom) - p2["boundingBox"]["top"]
                 
-                if p2["probability"] < p["probability"]:
-                    p2["tagId"] = p["tagId"]
-                    p2["tagName"] = p["tagName"]
+            if p2["probability"] < p["probability"]:
+                p2["tagId"] = p["tagId"]
+                p2["tagName"] = p["tagName"]
 
     return [p for p in sort_predictions if p not in delete_items]
 
@@ -96,4 +121,4 @@ def get_prediction():
     
     
 if __name__ == "__main__":
-    app.run(host="131.159.226.43",port=5000)
+    app.run(host="131.159.226.43",port=5000, debug=True)
